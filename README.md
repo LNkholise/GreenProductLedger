@@ -37,7 +37,7 @@ Written in **Hardhat** with **Node.js**, this contract has been successfully tes
    ```bash
     npx hardhat test
 
-## ✍️ Makeing changes
+## ✍️ Making changes
 
 1. **Create a new branch**
 
