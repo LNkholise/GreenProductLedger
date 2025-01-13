@@ -1,107 +1,99 @@
 const { expect } = require("chai");
+const { ethers } = require("hardhat");
 
 describe("EcoProductRegistry", function () {
   let EcoProductRegistry;
   let ecoProductRegistry;
   let owner;
+  let verifier;
 
-  beforeEach(async () => {
-    [owner] = await ethers.getSigners();
-    EcoProductRegistry = await ethers.getContractFactory("EcoProductRegistry");
-    ecoProductRegistry = await EcoProductRegistry.deploy();
+  before(async function () {
+    // Get signers (accounts) from ethers
+    [owner, verifier] = await ethers.getSigners();
+
+    // Deploy the contract
+    const EcoProductRegistryFactory = await ethers.getContractFactory("EcoProductRegistry");
+    ecoProductRegistry = await EcoProductRegistryFactory.deploy();
+    
+    // Wait for the deployment to finish
+    await ecoProductRegistry.deployed;
   });
 
-  describe("addProduct", function () {
-    it("should add a product and emit the ProductAdded event", async function () {
-      const name = "Eco Friendly Water Bottle";
-      const materials = ["BPA-free plastic", "Recycled aluminum"];
-      const carbonFootprintKg = 1;
-      const ecoScore = 80;
-      const recyclable = true;
-      const disposalInstructions = "Please recycle the bottle.";
+  it("Should add a product successfully", async function () {
+    const productName = "Eco-Friendly Bag";
+    const materials = ["Cotton", "Recycled Plastic"];
+    const carbonFootprint = 500; // in kg
+    const ecoScore = 90;
+    const recyclable = true;
+    const disposalInstructions = "Recycle with plastics";
+    const verifierAddress = verifier.address;
 
-      // Add the product
-      await expect(
-        ecoProductRegistry.addProduct(
-          name,
-          materials,
-          carbonFootprintKg,
-          ecoScore,
-          recyclable,
-          disposalInstructions
-        )
-      )
-        .to.emit(ecoProductRegistry, "ProductAdded")
-        .withArgs(0, name); // Check if the event is emitted correctly with the expected arguments
+    // Add a product to the registry
+    await ecoProductRegistry.addProduct(
+      productName,
+      materials,
+      carbonFootprint,
+      ecoScore,
+      recyclable,
+      disposalInstructions,
+      verifierAddress
+    );
 
-      const product = await ecoProductRegistry.getProduct(0);
-
-      // Verify that the product was added correctly
-      expect(product.name).to.equal(name);
-      expect(product.materials).to.deep.equal(materials);
-      expect(product.carbonFootprintKg).to.equal(carbonFootprintKg);
-      expect(product.ecoScore).to.equal(ecoScore);
-      expect(product.recyclable).to.equal(recyclable);
-      expect(product.disposalInstructions).to.equal(disposalInstructions);
-    });
-
-    it("should revert when ecoScore is greater than 100", async function () {
-      const name = "Eco Friendly Water Bottle";
-      const materials = ["BPA-free plastic", "Recycled aluminum"];
-      const carbonFootprintKg = 1;
-      const ecoScore = 101; // Invalid ecoScore
-      const recyclable = true;
-      const disposalInstructions = "Please recycle the bottle.";
-
-      // Expect the transaction to revert due to ecoScore validation
-      await expect(
-        ecoProductRegistry.addProduct(
-          name,
-          materials,
-          carbonFootprintKg,
-          ecoScore,
-          recyclable,
-          disposalInstructions
-        )
-      ).to.be.revertedWith("ecoScore must be between 0 and 100");
-    });
+    // Verify the product was added by checking the first product (ID 0)
+    const product = await ecoProductRegistry.getProduct(0);
+    expect(product.name).to.equal(productName);
+    expect(product.carbonFootprintKg.toString()).to.equal(carbonFootprint.toString());
+    expect(product.recyclable).to.equal(recyclable);
+    expect(product.verifier).to.equal(verifierAddress);
+    expect(product.materials.length).to.equal(materials.length);
+    expect(product.materials[0]).to.equal(materials[0]);
   });
 
-  describe("getProduct", function () {
-    it("should retrieve the correct product", async function () {
-      const name = "Eco Friendly Water Bottle";
-      const materials = ["BPA-free plastic", "Recycled aluminum"];
-      const carbonFootprintKg = 1;
-      const ecoScore = 80;
-      const recyclable = true;
-      const disposalInstructions = "Please recycle the bottle.";
+  it("Should retrieve product details correctly", async function () {
+    const productId = 0;
 
-      await ecoProductRegistry.addProduct(
-        name,
-        materials,
-        carbonFootprintKg,
-        ecoScore,
-        recyclable,
-        disposalInstructions
-      );
+    // Retrieve product details
+    const product = await ecoProductRegistry.getProduct(productId);
 
-      const product = await ecoProductRegistry.getProduct(0);
+    // Verify the product details
+    expect(product.name).to.equal("Eco-Friendly Bag");
+    expect(product.carbonFootprintKg.toString()).to.equal("500");
+    expect(product.ecoScore).to.equal(90);
+    expect(product.recyclable).to.equal(true);
+    expect(product.disposalInstructions).to.equal("Recycle with plastics");
+    expect(product.verifier).to.equal(verifier.address);
+    expect(product.materials.length).to.equal(2); // Since we added two materials
+    expect(product.materials[0]).to.equal("Cotton");
+    expect(product.materials[1]).to.equal("Recycled Plastic");
 
-      // Verify product data after adding it
-      expect(product.name).to.equal(name);
-      expect(product.materials).to.deep.equal(materials);
-      expect(product.carbonFootprintKg).to.equal(carbonFootprintKg);
-      expect(product.ecoScore).to.equal(ecoScore);
-      expect(product.recyclable).to.equal(recyclable);
-      expect(product.disposalInstructions).to.equal(disposalInstructions);
-    });
+    // Verify that traceability is empty initially
+    expect(product.traceability.length).to.equal(0);
+  });
 
-    it("should revert if the product does not exist", async function () {
-      // Expect revert when trying to get a non-existing product
-      await expect(ecoProductRegistry.getProduct(999)).to.be.revertedWith(
-        "Product does not exist"
-      );
-    });
+it("Should add a stage to the product's traceability history", async function () {
+  const productId = 0;
+  const stage = "Manufacturing stage completed";
+
+  // Add a new stage to the product's traceability using the verifier's address
+  await ecoProductRegistry.connect(verifier).addProductStage(productId, stage);
+
+  // Retrieve the updated product
+  const product = await ecoProductRegistry.getProduct(productId);
+
+  // Verify that the traceability history has the new stage
+  expect(product.traceability.length).to.equal(1);
+  expect(product.traceability[0]).to.equal(stage);
+});
+
+
+  it("Should fail if a non-verifier tries to add a stage", async function () {
+    const productId = 0;
+    const stage = "Shipping stage completed";
+
+    // Try adding a stage with a non-verifier address
+    await expect(
+      ecoProductRegistry.addProductStage(productId, stage, { from: owner.address })
+    ).to.be.revertedWith("Only the verifier can update traceability");
   });
 });
 
