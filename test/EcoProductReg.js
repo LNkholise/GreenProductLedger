@@ -70,21 +70,25 @@ describe("EcoProductRegistry", function () {
     expect(product.traceability.length).to.equal(0);
   });
 
-it("Should add a stage to the product's traceability history", async function () {
-  const productId = 0;
-  const stage = "Manufacturing stage completed";
+  it("Should add a stage to the product's traceability history", async function () {
+    const productId = 0;
+    const stage = "Manufacturing stage completed";
 
-  // Add a new stage to the product's traceability using the verifier's address
-  await ecoProductRegistry.connect(verifier).addProductStage(productId, stage);
+    // Add a new stage to the product's traceability using the verifier's address
+    await ecoProductRegistry.connect(verifier).addProductStage(productId, stage);
 
-  // Retrieve the updated product
-  const product = await ecoProductRegistry.getProduct(productId);
+    // Retrieve the updated product
+    const product = await ecoProductRegistry.getProduct(productId);
 
-  // Verify that the traceability history has the new stage
-  expect(product.traceability.length).to.equal(1);
-  expect(product.traceability[0]).to.equal(stage);
-});
+    // Verify that the traceability history has the new stage
+    expect(product.traceability.length).to.equal(1);
 
+    // Check that the stage description matches
+    expect(product.traceability[0].stageDescription).to.equal(stage);
+
+    // Check that the timestamp is valid (greater than zero)
+    expect(product.traceability[0].timestamp).to.be.greaterThan(0);
+  });
 
   it("Should fail if a non-verifier tries to add a stage", async function () {
     const productId = 0;
@@ -92,8 +96,7 @@ it("Should add a stage to the product's traceability history", async function ()
 
     // Try adding a stage with a non-verifier address
     await expect(
-      ecoProductRegistry.addProductStage(productId, stage, { from: owner.address })
+      ecoProductRegistry.connect(owner).addProductStage(productId, stage)
     ).to.be.revertedWith("Only the verifier can update traceability");
   });
 });
-
