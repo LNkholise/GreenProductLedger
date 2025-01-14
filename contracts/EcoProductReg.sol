@@ -4,6 +4,11 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract EcoProductRegistry is Ownable {
+    struct Stage {
+        string stageDescription;
+        uint256 timestamp;
+    }
+
     struct Product {
         string name;
         string[] materials;
@@ -12,15 +17,17 @@ contract EcoProductRegistry is Ownable {
         bool recyclable;
         string disposalInstructions;
         address verifier; // Address of the verifier
-        string[] traceability; // History of product stages
+        uint256 traceabilityCount; // Track number of traceability stages
     }
 
     constructor() public Ownable(msg.sender) {}
+
     mapping(uint256 => Product) public products;
+    mapping(uint256 => mapping(uint256 => Stage)) public productStages; // Mapping to store stages for each product
     uint256 public nextProductId;
 
     event ProductAdded(uint256 productId, string name, address verifier);
-    event ProductStageUpdated(uint256 productId, string stage);
+    event ProductStageUpdated(uint256 productId, string stage, uint256 timestamp);
 
     // Add a new product to the registry
     function addProduct(
@@ -43,7 +50,7 @@ contract EcoProductRegistry is Ownable {
             _recyclable,
             _disposalInstructions,
             _verifier,
-            new string[](0) //initialize the array of strings
+            0 // initialize the traceability count to 0
         );
 
         emit ProductAdded(nextProductId, _name, _verifier);
@@ -63,12 +70,19 @@ contract EcoProductRegistry is Ownable {
             bool recyclable,
             string memory disposalInstructions,
             address verifier,
-            string[] memory traceability
+            Stage[] memory traceability
         )
     {
         require(_productId < nextProductId, "Product does not exist");
 
         Product memory product = products[_productId];
+        uint256 traceabilityLength = product.traceabilityCount;
+        traceability = new Stage[](traceabilityLength);
+
+        for (uint256 i = 0; i < traceabilityLength; i++) {
+            traceability[i] = productStages[_productId][i];
+        }
+
         return (
             product.name,
             product.materials,
@@ -77,11 +91,11 @@ contract EcoProductRegistry is Ownable {
             product.recyclable,
             product.disposalInstructions,
             product.verifier,
-            product.traceability
+            traceability
         );
     }
 
-    // Add a new stage to the product's traceability history
+    // Adding a new stage to the product's traceability history with timestamp
     function addProductStage(uint256 _productId, string memory _stage) public {
         require(_productId < nextProductId, "Product does not exist");
         require(
@@ -89,9 +103,12 @@ contract EcoProductRegistry is Ownable {
             "Only the verifier can update traceability"
         );
 
-        products[_productId].traceability.push(_stage);
+        uint256 currentTimestamp = block.timestamp; // Getting the current timestamp
+        uint256 traceabilityIndex = products[_productId].traceabilityCount;
 
-        emit ProductStageUpdated(_productId, _stage);
+        productStages[_productId][traceabilityIndex] = Stage(_stage, currentTimestamp);
+        products[_productId].traceabilityCount++;
+
+        emit ProductStageUpdated(_productId, _stage, currentTimestamp);
     }
 }
-
