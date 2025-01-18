@@ -60,7 +60,8 @@ Once you're ready, open a Pull Request (PR) on GitHub. Describe your changes and
 We will review your PR and provide feedback.  
 
 You are also welcome to branch off and create your own variations of the project!
-Feel free to tweak it for your needs and help it grow in new and exciting directions.  
+Feel free to tweak it for your needs and help it grow in new and exciting directions.
+Please **don't forget to give a star** when forking the repo.
 Thank you for contributing to the **Green Product Ledger**! 🌱
 
   
