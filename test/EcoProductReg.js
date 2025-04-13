@@ -14,8 +14,7 @@ describe("EcoProductRegistry", function () {
     // Deploy the contract
     const EcoProductRegistryFactory = await ethers.getContractFactory("EcoProductRegistry");
     ecoProductRegistry = await EcoProductRegistryFactory.deploy();
-    
-    // Wait for the deployment to finish
+  
     await ecoProductRegistry.deployed;
   });
 
@@ -51,8 +50,7 @@ describe("EcoProductRegistry", function () {
 
   it("Should retrieve product details correctly", async function () {
     const productId = 0;
-
-    // Retrieve product details
+    
     const product = await ecoProductRegistry.getProduct(productId);
 
     // Verify the product details
@@ -73,20 +71,15 @@ describe("EcoProductRegistry", function () {
   it("Should add a stage to the product's traceability history", async function () {
     const productId = 0;
     const stage = "Manufacturing stage completed";
-
-    // Add a new stage to the product's traceability using the verifier's address
+    
     await ecoProductRegistry.connect(verifier).addProductStage(productId, stage);
 
-    // Retrieve the updated product
     const product = await ecoProductRegistry.getProduct(productId);
 
-    // Verify that the traceability history has the new stage
     expect(product.traceability.length).to.equal(1);
 
-    // Check that the stage description matches
     expect(product.traceability[0].stageDescription).to.equal(stage);
 
-    // Check that the timestamp is valid (greater than zero)
     expect(product.traceability[0].timestamp).to.be.greaterThan(0);
   });
 
@@ -94,7 +87,6 @@ describe("EcoProductRegistry", function () {
     const productId = 0;
     const stage = "Shipping stage completed";
 
-    // Try adding a stage with a non-verifier address
     await expect(
       ecoProductRegistry.connect(owner).addProductStage(productId, stage)
     ).to.be.revertedWith("Only the verifier can update traceability");
